@@ -17,3 +17,17 @@ export enum TabOption {
   FILE = 'FILE',
   LINK = 'LINK'
 }
+
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'model';
+  text: string;
+  timestamp: number;
+  isStreaming?: boolean;
+}
+
+export interface DocumentContext {
+  content: string;
+  isFile: boolean;
+  mimeType: string;
+}

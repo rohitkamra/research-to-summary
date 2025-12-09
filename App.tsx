@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Bot, Moon, Sun } from 'lucide-react';
+import { Bot, Moon, Sun, BookOpen, MessageSquare } from 'lucide-react';
 import { InputSection } from './components/InputSection';
 import { SummaryDisplay } from './components/SummaryDisplay';
+import { ChatInterface } from './components/ChatInterface';
 import { summarizeContentStream } from './services/geminiService';
-import { SummaryState } from './types';
+import { SummaryState, DocumentContext } from './types';
 
 function App() {
   const [state, setState] = useState<SummaryState>({
@@ -15,6 +16,10 @@ function App() {
 
   const [hasStarted, setHasStarted] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [activeTab, setActiveTab] = useState<'summary' | 'chat'>('summary');
+  
+  // State for the uploaded/pasted document to be shared with Chat
+  const [documentContext, setDocumentContext] = useState<DocumentContext | null>(null);
 
   // Initialize dark mode from system preference
   useEffect(() => {
@@ -34,9 +39,14 @@ function App() {
 
   const toggleDarkMode = () => setIsDarkMode(!isDarkMode);
 
-  const handleSummarize = async (content: string, isFile: boolean, mimeType?: string) => {
+  const handleSummarize = async (content: string, isFile: boolean, mimeType: string = 'text/plain') => {
+    // Reset state for new summary
     setState(prev => ({ ...prev, isLoading: true, error: null, content: '', isStreaming: true }));
     setHasStarted(true);
+    setActiveTab('summary'); // Switch to summary view on new submission
+    
+    // Save document context for chat
+    setDocumentContext({ content, isFile, mimeType });
 
     try {
       const stream = await summarizeContentStream(content, isFile, mimeType);
@@ -106,8 +116,36 @@ function App() {
             />
           </div>
 
-          {/* Right Column: Output */}
+          {/* Right Column: Output (Summary or Chat) */}
           <div className="h-full flex flex-col">
+            {/* View Toggle Tabs */}
+            {hasStarted && !state.error && (
+              <div className="flex space-x-1 bg-slate-200 dark:bg-slate-800 p-1 rounded-xl mb-4 w-fit">
+                <button
+                  onClick={() => setActiveTab('summary')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center space-x-2 transition-all ${
+                    activeTab === 'summary'
+                      ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                  }`}
+                >
+                  <BookOpen className="w-4 h-4" />
+                  <span>Summary</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('chat')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center space-x-2 transition-all ${
+                    activeTab === 'chat'
+                      ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                  }`}
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  <span>Ask Q&A</span>
+                </button>
+              </div>
+            )}
+
             {state.error ? (
                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl p-6 text-center text-red-700 dark:text-red-400 h-full flex items-center justify-center flex-col shadow-sm">
                  <div className="bg-red-100 dark:bg-red-900/40 p-3 rounded-full mb-4">
@@ -123,11 +161,15 @@ function App() {
                  </button>
                </div>
             ) : (
-              <SummaryDisplay 
-                content={state.content} 
-                isStreaming={state.isStreaming}
-                hasStarted={hasStarted}
-              />
+              activeTab === 'summary' ? (
+                <SummaryDisplay 
+                  content={state.content} 
+                  isStreaming={state.isStreaming}
+                  hasStarted={hasStarted}
+                />
+              ) : (
+                <ChatInterface documentContext={documentContext!} />
+              )
             )}
           </div>
         </div>

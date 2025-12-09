@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, Chat } from "@google/genai";
 
 const apiKey = process.env.API_KEY || '';
 
@@ -62,4 +62,37 @@ export const summarizeContentStream = async (
     console.error("Gemini API Error:", error);
     throw error;
   }
+};
+
+export const createChatSession = (
+  content: string,
+  isFile: boolean,
+  mimeType: string = 'text/plain'
+): Chat => {
+  // Use gemini-2.5-flash-lite for fast responses as requested
+  const modelId = 'gemini-2.5-flash-lite';
+  
+  const history = [
+    {
+      role: 'user',
+      parts: [
+        { text: "I am providing a research paper/document below. Please analyze it and prepare to answer my questions about it directly and concisely." },
+        isFile 
+          ? { inlineData: { mimeType, data: content } }
+          : { text: content }
+      ]
+    },
+    {
+      role: 'model',
+      parts: [{ text: "I have analyzed the document. I am ready to answer your questions about it." }]
+    }
+  ];
+
+  return ai.chats.create({
+    model: modelId,
+    history: history,
+    config: {
+      systemInstruction: "You are a helpful research assistant. Answer questions based ONLY on the provided document. Keep answers concise and direct.",
+    }
+  });
 };
